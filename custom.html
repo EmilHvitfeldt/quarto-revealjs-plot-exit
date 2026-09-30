@@ -141,11 +141,12 @@
     svg._timers.push(t);
   }
 
-  function prepareSvg(svg, order, trails) {
+  function prepareSvg(svg, order, trails, n) {
     if (svg.dataset.gravityReady) return;
     svg.dataset.gravityReady = "true";
     svg._gravityOrder = order;
     svg._gravityTrails = trails;
+    svg._gravityN = n;
     svg._gravityGhosts = new Set();
 
     const vb = svg.viewBox && svg.viewBox.baseVal;
@@ -197,6 +198,8 @@
         return a.el.getBoundingClientRect().left - b.el.getBoundingClientRect().left;
       });
     }
+
+    if (svg._gravityN) order = order.slice(0, svg._gravityN);
 
     order.forEach((m, i) => {
       const t = setTimeout(() => {
@@ -257,7 +260,8 @@
     await inlineSvgImages(fragment);
     const order = fragment.classList.contains("random-order") ? "random" : "sweep";
     const trails = fragment.classList.contains("trails");
-    fragment.querySelectorAll("svg").forEach((svg) => prepareSvg(svg, order, trails));
+    const n = parseInt(fragment.dataset.n, 10) || 0;
+    fragment.querySelectorAll("svg").forEach((svg) => prepareSvg(svg, order, trails, n));
   }
 
   function boot() {
@@ -590,11 +594,12 @@
     el._morphRAF = requestAnimationFrame(frame);
   }
 
-  function prepareSvg(svg, order) {
+  function prepareSvg(svg, order, n) {
     if (svg.dataset.batsReady) return;
     svg.dataset.batsReady = "true";
     svg._batsTimers = [];
     svg._batsOrder = order;
+    svg._batsN = n;
 
     const vb = svg.viewBox && svg.viewBox.baseVal;
     const svgWidth = vb && vb.width ? vb.width : svg.clientWidth;
@@ -714,6 +719,8 @@
       });
     }
 
+    if (svg._batsN) order = order.slice(0, svg._batsN);
+
     order.forEach((m, i) => {
       const t = setTimeout(() => morphOne(svg, m), i * STAGGER_MS);
       svg._batsTimers.push(t);
@@ -746,7 +753,8 @@
 
     await inlineSvgImages(fragment);
     const order = fragment.classList.contains("random-order") ? "random" : "sweep";
-    fragment.querySelectorAll("svg").forEach((svg) => prepareSvg(svg, order));
+    const n = parseInt(fragment.dataset.n, 10) || 0;
+    fragment.querySelectorAll("svg").forEach((svg) => prepareSvg(svg, order, n));
   }
 
   function boot() {

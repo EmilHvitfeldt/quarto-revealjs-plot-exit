@@ -62,10 +62,46 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
 ```
 :::
 
+## A ggplot2 plot
+
+Press the forward key to make the plot fall apart.
+
+::: {.fragment .gravity-exit .random-order data-n="5"}
+<!-- Only 5 randomly chosen elements fall; the rest stay put. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
 ## October is Near
 
 ::: {.fragment .bats-exit .random-order}
 <!-- Each mark morphs into a bat silhouette (bat.svg), then flutters off and fades out. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  scale_color_viridis_d(option = "C")
+```
+:::
+
+## October is Near
+
+::: {.fragment .bats-exit .random-order data-n="10"}
+<!-- Only 5 randomly chosen marks turn into bats; the rest stay put. -->
 
 ```{r}
 #| dev: svg
