@@ -1,0 +1,81 @@
+---
+title: "quarto-revealjs-plot-exit"
+format:
+  revealjs:
+    theme: [default, styles.scss]
+    include-after-body:
+      - custom.html
+---
+
+## A ggplot2 plot
+
+Press the forward key to make the plot fall apart.
+
+::: {.fragment .gravity-exit}
+<!-- Left-to-right sweep (no modifier classes). -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
+
+## A ggplot2 plot
+
+Press the forward key to make the plot fall apart.
+
+::: {.fragment .gravity-exit .random-order}
+<!-- Random fall order instead of the left-to-right sweep. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
+## A ggplot2 plot
+
+Press the forward key to make the plot fall apart.
+
+::: {.fragment .gravity-exit .random-order .trails}
+<!-- Adds fading motion trails behind each falling element. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
+## A ggplot2 plot
+
+Press the forward key to turn the plot into a colcony of bats.
+
+::: {.fragment .bats-exit .random-order}
+<!-- Each mark morphs into a bat silhouette (bat.svg), then flutters off and fades out. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
