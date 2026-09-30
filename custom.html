@@ -301,7 +301,7 @@
   const SVG_NS = "http://www.w3.org/2000/svg";
   const STAGGER_MS = 12;
   const MORPH_MS = 2500; // shape actually deforms from the mark into a bat
-  const BAT_SIZE_MULTIPLIER = 2; // how much bigger the morphed bat is than its normal size
+  const BAT_SIZE_MULTIPLIER = 4; // how much bigger the morphed bat is than its normal size
   const FADE_MS = 650; // bat flutters away and fades
   const SAMPLE_N = 36; // points sampled around each shape's outline
 
@@ -650,12 +650,11 @@
     proxy.style.pointerEvents = "none";
     // The shape's own points are already centred at its local (0, 0), so
     // translate+scale alone (no transform-origin juggling) places it exactly
-    // on the mark it replaces. The proxy starts at its *final* bat size right
-    // away — for a big mark (a full-width gridline, say) that's a strong size
-    // drop from the original, so it's masked with a quick crossfade instead
-    // of animating the scale itself, which would otherwise leave an enormous
-    // half-morphed shape hanging around for most of the transition.
-    proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.targetRadius})`;
+    // on the mark it replaces. The proxy starts at the mark's own size and
+    // grows to its final bat size over the same duration as the shape tween
+    // below, so the size-up and the outline morph read as one motion instead
+    // of the size jumping instantly and then the shape unfurling afterwards.
+    proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.ownRadius})`;
     proxy.style.opacity = "0";
     svg.appendChild(proxy);
     m.proxyEl = proxy;
@@ -663,10 +662,11 @@
     void proxy.getBoundingClientRect(); // force reflow before transition
 
     const CROSSFADE_MS = Math.min(150, MORPH_MS / 2);
-    proxy.style.transition = `opacity ${CROSSFADE_MS}ms linear`;
+    proxy.style.transition = `opacity ${CROSSFADE_MS}ms linear, transform ${MORPH_MS}ms ease-in-out`;
     m.el.style.transition = `opacity ${CROSSFADE_MS}ms linear`;
     requestAnimationFrame(() => {
       proxy.style.opacity = "1";
+      proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.targetRadius})`;
       m.el.style.opacity = "0";
     });
     tweenShape(proxy, m.sourceUnitPoints, m.batUnitPoints, MORPH_MS);
