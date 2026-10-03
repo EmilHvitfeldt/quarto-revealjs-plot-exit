@@ -3,6 +3,7 @@
   const STAGGER_MS = 12;
   const FALL_MS = 850;
   const GRAVITY_EASE = "cubic-bezier(0.55, 0.055, 0.675, 0.19)"; // accelerating fall
+  const RETURN_EASE = "cubic-bezier(0.25, 0.46, 0.45, 0.94)"; // decelerating float back into place
   const TRAIL_INTERVAL_MS = 70; // how often a ghost copy is dropped while falling
   const TRAIL_FADE_MS = 200; // how long each ghost takes to fade out
   const TRAIL_OPACITY = 0.45; // starting opacity of a freshly dropped ghost
@@ -181,7 +182,10 @@
     const marks = svg._gravityMarks || [];
     if (!marks.length) return;
 
-    svg._timers = svg._timers || [];
+    // A reverse pass may still be in flight (user advanced again before it
+    // finished); cancel it so its timers don't fight with the forward fall.
+    (svg._timers || []).forEach((t) => clearTimeout(t));
+    svg._timers = [];
 
     let order;
     if (svg._gravityOrder === "random") {
@@ -200,6 +204,11 @@
     }
 
     if (svg._gravityN) order = order.slice(0, svg._gravityN);
+
+    // Reversing needs to replay this exact subset (random-order + data-n
+    // picks a fresh random subset every call) in the exact reverse sequence,
+    // not recompute it later and risk reversing a different random subset.
+    svg._gravityLastOrder = order;
 
     order.forEach((m, i) => {
       const t = setTimeout(() => {
@@ -228,28 +237,58 @@
   }
 
   function resetFalling(svg) {
+    // A forward fall may still be in flight; cancel its timers so this
+    // reverse pass is the only thing driving the marks from here.
     (svg._timers || []).forEach((t) => clearTimeout(t));
     svg._timers = [];
 
     (svg._gravityGhosts || new Set()).forEach((ghost) => ghost.remove());
     if (svg._gravityGhosts) svg._gravityGhosts.clear();
 
-    (svg._gravityMarks || []).forEach((m) => {
-      m.trailInterval = null;
-      m.el.style.transition = "none";
-      m.el.style.transform = "";
-      m.el.style.opacity = "";
+    // Reverse only the marks that actually fell (the exact random-order +
+    // data-n subset `startFalling` used), in reverse sequence, mirroring the
+    // forward stagger around the end of its timeline. Marks outside that
+    // subset were never touched and stay untouched here too.
+    const order = (svg._gravityLastOrder || []).slice().reverse();
 
-      if (m.originalNext && m.originalNext.parentNode === m.originalParent) {
-        m.originalParent.insertBefore(m.el, m.originalNext);
-      } else {
-        m.originalParent.appendChild(m.el);
-      }
+    order.forEach((m, i) => {
+      const t = setTimeout(() => {
+        m.state = "returning";
 
-      void m.el.getBoundingClientRect(); // force reflow before re-enabling transition
-      m.el.style.transition =
-        `transform ${FALL_MS}ms ${GRAVITY_EASE}, opacity ${FALL_MS}ms ease-in`;
-      m.state = "idle";
+        // Changing the transform/opacity target while a transition is still
+        // running makes the browser interpolate from the current live value,
+        // not the nominal fallen end state, so this is safe to call whether
+        // the mark already finished falling or is still mid-fall.
+        m.el.style.transition =
+          `transform ${FALL_MS}ms ${RETURN_EASE}, opacity ${FALL_MS}ms ease-out`;
+        m.el.style.transform = "";
+        m.el.style.opacity = "";
+
+        if (svg._gravityTrails) {
+          m.trailInterval = setInterval(() => spawnGhost(svg, m.el), TRAIL_INTERVAL_MS);
+          svg._timers.push(m.trailInterval);
+        }
+
+        const t2 = setTimeout(() => {
+          m.state = "idle";
+          if (m.trailInterval) clearInterval(m.trailInterval);
+          m.trailInterval = null;
+
+          // Only safe to reparent back under the (possibly clip-path'd)
+          // original parent once the transform is actually back at identity;
+          // doing it earlier would clip the mark away mid-flight.
+          if (m.originalNext && m.originalNext.parentNode === m.originalParent) {
+            m.originalParent.insertBefore(m.el, m.originalNext);
+          } else {
+            m.originalParent.appendChild(m.el);
+          }
+
+          m.el.style.transition =
+            `transform ${FALL_MS}ms ${GRAVITY_EASE}, opacity ${FALL_MS}ms ease-in`;
+        }, FALL_MS);
+        svg._timers.push(t2);
+      }, i * STAGGER_MS);
+      svg._timers.push(t);
     });
   }
 
@@ -576,6 +615,10 @@
   // done with ordinary CSS transitions on `transform`/`opacity`).
   function tweenShape(el, fromPts, toPts, duration) {
     if (el._morphRAF) cancelAnimationFrame(el._morphRAF);
+    // Recorded every frame so a reversal interrupting mid-tween (or right
+    // after it finishes) can read back the shape's true current point set
+    // instead of assuming it reached `toPts`.
+    el._morphCurrentPts = fromPts;
     const start = performance.now();
     function frame(now) {
       const t = Math.min(1, (now - start) / duration);
@@ -585,6 +628,7 @@
         y: p.y + (toPts[i].y - p.y) * e
       }));
       el.setAttribute("d", pointsToPathD(pts));
+      el._morphCurrentPts = pts;
       if (t < 1) {
         el._morphRAF = requestAnimationFrame(frame);
       } else {
@@ -647,6 +691,15 @@
   }
 
   function morphOne(svg, m) {
+    // A reverse pass may have been interrupted before it cleaned up its own
+    // proxy (e.g. the user advanced forward again mid-reverse); drop it so
+    // we don't orphan a second, untracked proxy in the SVG.
+    if (m.proxyEl) {
+      if (m.proxyEl._morphRAF) cancelAnimationFrame(m.proxyEl._morphRAF);
+      m.proxyEl.remove();
+      m.proxyEl = null;
+    }
+
     m.state = "morphing";
 
     const proxy = document.createElementNS(SVG_NS, "path");
@@ -702,7 +755,10 @@
     const marks = svg._batsMarks || [];
     if (!marks.length) return;
 
-    svg._batsTimers = svg._batsTimers || [];
+    // A reverse pass may still be in flight; cancel it so its timers don't
+    // fight with the forward morph/flight.
+    (svg._batsTimers || []).forEach((t) => clearTimeout(t));
+    svg._batsTimers = [];
 
     let order;
     if (svg._batsOrder === "random") {
@@ -721,29 +777,101 @@
 
     if (svg._batsN) order = order.slice(0, svg._batsN);
 
+    // Reversing needs to replay this exact subset (random-order + data-n
+    // picks a fresh random subset every call) in the exact reverse sequence,
+    // not recompute it later and risk reversing a different random subset.
+    svg._batsLastOrder = order;
+
     order.forEach((m, i) => {
       const t = setTimeout(() => morphOne(svg, m), i * STAGGER_MS);
       svg._batsTimers.push(t);
     });
   }
 
+  // Reverse of flyAway: bring the proxy back from wherever it currently is
+  // (mid-flight or fully flown, courtesy of the usual CSS-transition
+  // retargeting trick) to the position/size it had right after morphing,
+  // undoing the drift/rise/spin/scale-up and the fade-out.
+  function reverseFlyAway(svg, m) {
+    const proxy = m.proxyEl;
+    if (!proxy) return;
+    m.state = "unflying";
+
+    proxy.style.transition = `transform ${FADE_MS}ms ease-out, opacity ${FADE_MS}ms ease-in`;
+    void proxy.getBoundingClientRect(); // force reflow before transition
+    proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.targetRadius})`;
+    proxy.style.opacity = "1";
+  }
+
+  // Reverse of morphOne: tween the proxy's outline back from wherever it
+  // currently is (`_morphCurrentPts`, valid whether the forward morph fully
+  // finished or was interrupted mid-tween) to the mark's own outline, shrink
+  // it back to the mark's own size, then crossfade the proxy out and the
+  // original mark back in at the END of the tween (mirroring how the
+  // forward morph crossfades at the START).
+  function reverseMorphOne(svg, m) {
+    const proxy = m.proxyEl;
+    if (!proxy) return;
+    m.state = "unmorphing";
+
+    const fromPts = proxy._morphCurrentPts || m.batUnitPoints;
+
+    // Declare both transitions up front (same as the forward morph does) so
+    // the later opacity change just lands inside its already-declared
+    // window instead of re-declaring `transition` mid-flight, which would
+    // risk cutting the still-running transform transition short.
+    const CROSSFADE_MS = Math.min(150, MORPH_MS / 2);
+    proxy.style.transition = `opacity ${CROSSFADE_MS}ms linear, transform ${MORPH_MS}ms ease-in-out`;
+    void proxy.getBoundingClientRect(); // force reflow before transition
+    proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.ownRadius})`;
+    tweenShape(proxy, fromPts, m.sourceUnitPoints, MORPH_MS);
+
+    m.el.style.transition = `opacity ${CROSSFADE_MS}ms linear`;
+
+    const t = setTimeout(() => {
+      proxy.style.opacity = "0";
+      m.el.style.opacity = "1";
+    }, MORPH_MS - CROSSFADE_MS);
+    svg._batsTimers.push(t);
+
+    const t2 = setTimeout(() => {
+      if (proxy._morphRAF) cancelAnimationFrame(proxy._morphRAF);
+      proxy.remove();
+      m.proxyEl = null;
+      m.el.style.opacity = "";
+      m.state = "idle";
+    }, MORPH_MS);
+    svg._batsTimers.push(t2);
+  }
+
   function resetBats(svg) {
+    // A forward morph/flight may still be in flight; cancel its timers so
+    // this reverse pass is the only thing driving the marks from here.
     (svg._batsTimers || []).forEach((t) => clearTimeout(t));
     svg._batsTimers = [];
 
-    (svg._batsMarks || []).forEach((m) => {
-      if (m.proxyEl) {
-        if (m.proxyEl._morphRAF) cancelAnimationFrame(m.proxyEl._morphRAF);
-        m.proxyEl.remove();
-        m.proxyEl = null;
-      }
+    // Reverse only the marks that actually left (the exact random-order +
+    // data-n subset `startBats` used), in reverse sequence. Marks outside
+    // that subset were never touched and stay untouched here too.
+    const order = (svg._batsLastOrder || []).slice().reverse();
 
-      m.el.style.transition = "none";
-      m.el.style.opacity = "";
+    order.forEach((m, i) => {
+      if (m.state === "idle") return; // never started; nothing to reverse
 
-      void m.el.getBoundingClientRect(); // force reflow before re-enabling transition
-      m.el.style.transition = "";
-      m.state = "idle";
+      const t = setTimeout(() => {
+        if (m.state === "morphing") {
+          // Interrupted before it ever took flight: skip straight to
+          // un-morphing from its current live shape.
+          reverseMorphOne(svg, m);
+        } else {
+          // state is "flying" or "gone": reverse the flight first, then
+          // un-morph once it's back at its just-morphed position/size.
+          reverseFlyAway(svg, m);
+          const t2 = setTimeout(() => reverseMorphOne(svg, m), FADE_MS);
+          svg._batsTimers.push(t2);
+        }
+      }, i * STAGGER_MS);
+      svg._batsTimers.push(t);
     });
   }
 
