@@ -211,12 +211,22 @@
     svg._gravityLastOrder = order;
 
     order.forEach((m, i) => {
+      // A mark currently mid-return must redirect immediately, not wait for
+      // its position in the stagger schedule — only idle/settled marks keep
+      // the staggered delay.
+      const delay = m.state === "returning" ? 0 : i * STAGGER_MS;
       const t = setTimeout(() => {
         // Escape any clip-path ancestor so the element visibly falls past
         // the panel boundary instead of vanishing at the clip edge.
         svg.appendChild(m.el);
         m.state = "falling";
 
+        // Reassign the forward transition (a mid-return mark still has the
+        // return transition applied) before the reflow, so the browser
+        // interpolates from the live current value using the right
+        // duration/easing rather than the one it was retargeted away from.
+        m.el.style.transition =
+          `transform ${FALL_MS}ms ${GRAVITY_EASE}, opacity ${FALL_MS}ms ease-in`;
         void m.el.getBoundingClientRect(); // force reflow before transition
         m.el.style.transform = `translate(${m.drift}px, ${m.fallY}px) rotate(${m.spin}deg)`;
         m.el.style.opacity = "0";
@@ -231,7 +241,7 @@
           if (m.trailInterval) clearInterval(m.trailInterval);
         }, FALL_MS);
         svg._timers.push(t2);
-      }, i * STAGGER_MS);
+      }, delay);
       svg._timers.push(t);
     });
   }
@@ -252,6 +262,10 @@
     const order = (svg._gravityLastOrder || []).slice().reverse();
 
     order.forEach((m, i) => {
+      // A mark currently mid-fall must redirect immediately, not wait for
+      // its position in the mirrored stagger schedule — only idle/settled
+      // marks keep the staggered delay.
+      const delay = m.state === "falling" ? 0 : i * STAGGER_MS;
       const t = setTimeout(() => {
         m.state = "returning";
 
@@ -287,7 +301,7 @@
             `transform ${FALL_MS}ms ${GRAVITY_EASE}, opacity ${FALL_MS}ms ease-in`;
         }, FALL_MS);
         svg._timers.push(t2);
-      }, i * STAGGER_MS);
+      }, delay);
       svg._timers.push(t);
     });
   }
@@ -690,35 +704,44 @@
     });
   }
 
-  function morphOne(svg, m) {
-    // A reverse pass may have been interrupted before it cleaned up its own
-    // proxy (e.g. the user advanced forward again mid-reverse); drop it so
-    // we don't orphan a second, untracked proxy in the SVG.
-    if (m.proxyEl) {
-      if (m.proxyEl._morphRAF) cancelAnimationFrame(m.proxyEl._morphRAF);
-      m.proxyEl.remove();
-      m.proxyEl = null;
-    }
-
-    m.state = "morphing";
-
+  // Returns the mark's live proxy, creating one (at the mark's own
+  // position/size, invisible) only if nothing is live yet. Reusing an
+  // existing proxy rather than tearing it down and rebuilding is what lets
+  // morphOne() continue a reverse pass's live shape/position in place
+  // instead of snapping it away and fading in a fresh one from scratch.
+  function ensureProxy(svg, m) {
+    if (m.proxyEl) return m.proxyEl;
     const proxy = document.createElementNS(SVG_NS, "path");
     proxy.setAttribute("d", pointsToPathD(m.sourceUnitPoints));
     proxy.style.fill = m.color;
     proxy.style.pointerEvents = "none";
     // The shape's own points are already centred at its local (0, 0), so
     // translate+scale alone (no transform-origin juggling) places it exactly
-    // on the mark it replaces. The proxy starts at the mark's own size and
-    // grows to its final bat size over the same duration as the shape tween
-    // below, so the size-up and the outline morph read as one motion instead
-    // of the size jumping instantly and then the shape unfurling afterwards.
+    // on the mark it replaces.
     proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.ownRadius})`;
     proxy.style.opacity = "0";
     svg.appendChild(proxy);
     m.proxyEl = proxy;
+    return proxy;
+  }
 
-    void proxy.getBoundingClientRect(); // force reflow before transition
+  function morphOne(svg, m) {
+    // If a reverse pass left a live proxy (mid-unmorph, shape still
+    // tweening back), keep driving that same element from wherever it
+    // currently sits instead of discarding it — only a truly fresh start
+    // (idle, no proxy yet) needs the invisible-small-proxy setup below.
+    const freshStart = !m.proxyEl;
+    const proxy = ensureProxy(svg, m);
+    const fromPts = proxy._morphCurrentPts || m.sourceUnitPoints;
 
+    m.state = "morphing";
+
+    if (freshStart) void proxy.getBoundingClientRect(); // force reflow before transition
+
+    // The proxy starts at the mark's own size and grows to its final bat
+    // size over the same duration as the shape tween below, so the size-up
+    // and the outline morph read as one motion instead of the size jumping
+    // instantly and then the shape unfurling afterwards.
     const CROSSFADE_MS = Math.min(150, MORPH_MS / 2);
     proxy.style.transition = `opacity ${CROSSFADE_MS}ms linear, transform ${MORPH_MS}ms ease-in-out`;
     m.el.style.transition = `opacity ${CROSSFADE_MS}ms linear`;
@@ -727,10 +750,25 @@
       proxy.style.transform = `translate(${m.cx}px, ${m.cy}px) scale(${m.targetRadius})`;
       m.el.style.opacity = "0";
     });
-    tweenShape(proxy, m.sourceUnitPoints, m.batUnitPoints, MORPH_MS);
+    tweenShape(proxy, fromPts, m.batUnitPoints, MORPH_MS);
 
     const t = setTimeout(() => flyAway(svg, m), MORPH_MS);
     svg._batsTimers.push(t);
+  }
+
+  // Dispatch for a forward (fragmentshown) pass: a mark that's mid-unflight
+  // is already fully bat-shaped, so it only needs its flight redirected
+  // outward again (flyAway, reused on the same proxy) — re-entering the
+  // shape morph would be a no-op on the shape but would wrongly restart the
+  // position/size tween from scratch. Everything else (idle, or mid-unmorph
+  // where the shape itself is still live) goes through morphOne, which
+  // continues rather than restarts if a proxy is already live.
+  function startOrResumeForward(svg, m) {
+    if (m.state === "unflying") {
+      flyAway(svg, m);
+    } else {
+      morphOne(svg, m);
+    }
   }
 
   function flyAway(svg, m) {
@@ -783,7 +821,11 @@
     svg._batsLastOrder = order;
 
     order.forEach((m, i) => {
-      const t = setTimeout(() => morphOne(svg, m), i * STAGGER_MS);
+      // A mark currently mid-reverse must redirect immediately, not wait
+      // for its position in the stagger schedule — only idle/settled marks
+      // keep the staggered delay.
+      const delay = (m.state === "unmorphing" || m.state === "unflying") ? 0 : i * STAGGER_MS;
+      const t = setTimeout(() => startOrResumeForward(svg, m), delay);
       svg._batsTimers.push(t);
     });
   }
@@ -858,6 +900,11 @@
     order.forEach((m, i) => {
       if (m.state === "idle") return; // never started; nothing to reverse
 
+      // A mark currently mid-flight (still morphing toward, or flying away
+      // as, a bat) must redirect immediately, not wait for its position in
+      // the mirrored stagger schedule — only already-settled ("gone") marks
+      // keep the staggered delay.
+      const delay = (m.state === "morphing" || m.state === "flying") ? 0 : i * STAGGER_MS;
       const t = setTimeout(() => {
         if (m.state === "morphing") {
           // Interrupted before it ever took flight: skip straight to
@@ -870,7 +917,7 @@
           const t2 = setTimeout(() => reverseMorphOne(svg, m), FADE_MS);
           svg._batsTimers.push(t2);
         }
-      }, i * STAGGER_MS);
+      }, delay);
       svg._batsTimers.push(t);
     });
   }
