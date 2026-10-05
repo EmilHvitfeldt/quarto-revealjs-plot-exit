@@ -1,0 +1,11 @@
+tests/
+node_modules/
+test-results/
+playwright-report/
+playwright.config.ts
+package.json
+package-lock.json
+index.qmd
+index.html
+index_files/
+.github/

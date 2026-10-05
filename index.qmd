@@ -1,15 +1,14 @@
 ---
-title: "quarto-revealjs-plot-exit"
-format:
-  revealjs:
-    theme: [default, styles.scss]
-    include-after-body:
-      - custom.html
+title: "Plot Exit"
+subtitle: "Make plots fall apart or turn into bats"
+format: revealjs
+revealjs-plugins:
+  - plot-exit
 ---
 
-## A ggplot2 plot
+## Gravity: left-to-right sweep
 
-Press the forward key to make the plot fall apart.
+`.gravity-exit` makes the marks fall, sweeping from left to right. Press the forward key to try it.
 
 ::: {.fragment .gravity-exit}
 <!-- Left-to-right sweep (no modifier classes). -->
@@ -26,9 +25,9 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
 :::
 
 
-## A ggplot2 plot
+## Gravity: random order
 
-Press the forward key to make the plot fall apart.
+Adding `.random-order` makes the marks fall in a random order instead of sweeping.
 
 ::: {.fragment .gravity-exit .random-order}
 <!-- Random fall order instead of the left-to-right sweep. -->
@@ -44,9 +43,9 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
 ```
 :::
 
-## A ggplot2 plot
+## Gravity: trails
 
-Press the forward key to make the plot fall apart.
+Adding `.trails` leaves fading motion trails behind each falling mark.
 
 ::: {.fragment .gravity-exit .random-order .trails}
 <!-- Adds fading motion trails behind each falling element. -->
@@ -62,9 +61,9 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
 ```
 :::
 
-## A ggplot2 plot
+## Gravity: only some marks
 
-Press the forward key to make the plot fall apart.
+Setting `data-n="5"` makes only 5 randomly chosen marks fall; the rest stay put.
 
 ::: {.fragment .gravity-exit .random-order data-n="5"}
 <!-- Only 5 randomly chosen elements fall; the rest stay put. -->
@@ -80,7 +79,9 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
 ```
 :::
 
-## October is Near
+## Bats: October is near
+
+`.bats-exit` morphs each mark into a bat that flutters off and fades out.
 
 ::: {.fragment .bats-exit .random-order}
 <!-- Each mark morphs into a bat silhouette (bat.svg), then flutters off and fades out. -->
@@ -98,10 +99,12 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
 ```
 :::
 
-## October is Near
+## Bats: only some marks
+
+`data-n="10"` works here too: only 10 randomly chosen marks turn into bats.
 
 ::: {.fragment .bats-exit .random-order data-n="10"}
-<!-- Only 5 randomly chosen marks turn into bats; the rest stay put. -->
+<!-- Only 10 randomly chosen marks turn into bats; the rest stay put. -->
 
 ```{r}
 #| dev: svg

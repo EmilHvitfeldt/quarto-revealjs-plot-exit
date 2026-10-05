@@ -1,0 +1,12 @@
+/* Keep the plot visible in all fragment states; the exit effect itself
+   (gravity fall or bat morph-then-fade), not fragment opacity/visibility,
+   is what makes the chart disappear. */
+.reveal .slides section .fragment.gravity-exit,
+.reveal .slides section .fragment.gravity-exit.visible,
+.reveal .slides section .fragment.gravity-exit.current-fragment,
+.reveal .slides section .fragment.bats-exit,
+.reveal .slides section .fragment.bats-exit.visible,
+.reveal .slides section .fragment.bats-exit.current-fragment {
+  opacity: 1;
+  visibility: visible;
+}

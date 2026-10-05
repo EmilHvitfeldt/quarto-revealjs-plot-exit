@@ -1,4 +1,3 @@
-<script type="text/javascript">
 (function () {
   const STAGGER_MS = 12;
   const FALL_MS = 850;
@@ -349,11 +348,10 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
-</script>
 
-<script type="text/javascript">
 (function () {
   const SVG_NS = "http://www.w3.org/2000/svg";
   const STAGGER_MS = 12;
@@ -965,6 +963,6 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
-</script>

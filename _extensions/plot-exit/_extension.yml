@@ -1,0 +1,12 @@
+title: Plot Exit
+author: Emil Hvitfeldt
+version: 0.1.0
+quarto-required: ">=1.4.0"
+contributes:
+  revealjs-plugins:
+    - name: PlotExit
+      register: false
+      script:
+        - plot-exit.js
+      stylesheet:
+        - plot-exit.css
