@@ -1,0 +1,21 @@
+$schema: https://m.canouil.dev/quarto-wizard/assets/schema/v2/extension-schema.json
+attributes:
+  gravity-exit:
+    data-n:
+      type: integer
+      minimum: 1
+      description: "Only this many randomly chosen marks fall; the rest stay put."
+  bats-exit:
+    data-n:
+      type: integer
+      minimum: 1
+      description: "Only this many randomly chosen marks turn into bats; the rest stay put."
+classes:
+  gravity-exit:
+    description: "Used on a .fragment wrapping an SVG plot. Marks fall off the slide, sweeping left to right."
+  bats-exit:
+    description: "Used on a .fragment wrapping an SVG plot. Each mark morphs into a bat, then flutters off and fades out."
+  random-order:
+    description: "Marks go in a random order instead of a left-to-right sweep."
+  trails:
+    description: "Leaves fading motion trails behind falling marks (.gravity-exit only)."

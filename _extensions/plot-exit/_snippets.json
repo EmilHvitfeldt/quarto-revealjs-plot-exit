@@ -1,0 +1,17 @@
+{
+  "Plot Exit: enable plugin": {
+    "prefix": "plot-exit:yaml",
+    "body": ["format: revealjs", "revealjs-plugins:", "  - plot-exit"],
+    "description": "Enable the plot-exit RevealJS plugin in the YAML header."
+  },
+  "Plot Exit: gravity": {
+    "prefix": "plot-exit:gravity",
+    "body": ["::: {.fragment .gravity-exit${1: .random-order}}", "$0", ":::"],
+    "description": "Fragment whose SVG plot falls apart when advanced."
+  },
+  "Plot Exit: bats": {
+    "prefix": "plot-exit:bats",
+    "body": ["::: {.fragment .bats-exit${1: .random-order}}", "$0", ":::"],
+    "description": "Fragment whose SVG plot turns into bats when advanced."
+  }
+}
