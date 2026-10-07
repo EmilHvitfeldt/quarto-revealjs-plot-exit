@@ -64,3 +64,18 @@ ggplot(mpg, aes(hwy)) +
   theme(panel.grid = element_blank())
 ```
 :::
+
+---
+
+::: {.fragment .bats-exit .random-order}
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(hwy)) +
+  geom_histogram(binwidth = 2, fill = "#F89441", color = "white") +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+:::
