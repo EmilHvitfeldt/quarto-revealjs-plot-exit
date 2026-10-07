@@ -45,3 +45,22 @@ ggplot(mpg, aes(displ, hwy, color = class)) +
   scale_color_viridis_d(option = "C")
 ```
 :::
+
+## Bats: histogram
+
+Bars work too: each bar of a histogram turns into a bat.
+
+::: {.fragment .bats-exit .random-order}
+<!-- Each histogram bar morphs into a bat, then flutters off and fades out. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(hwy)) +
+  geom_histogram(binwidth = 2, fill = "#F89441", color = "white") +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+:::
