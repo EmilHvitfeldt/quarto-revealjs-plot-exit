@@ -1,6 +1,11 @@
 /.quarto/
 /index.html
 /index_files/
+/gravity.html
+/gravity_files/
+/bats.html
+/bats_files/
+/_site/
 /node_modules/
 /test-results/
 /playwright-report/

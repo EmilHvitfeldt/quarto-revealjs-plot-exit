@@ -1,0 +1,80 @@
+---
+title: "Gravity Exit"
+subtitle: "Make plots fall apart"
+format: revealjs
+revealjs-plugins:
+  - plot-exit
+---
+
+## Gravity: left-to-right sweep
+
+`.gravity-exit` makes the marks fall, sweeping from left to right. Press the forward key to try it.
+
+::: {.fragment .gravity-exit}
+<!-- Left-to-right sweep (no modifier classes). -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
+
+## Gravity: random order
+
+Adding `.random-order` makes the marks fall in a random order instead of sweeping.
+
+::: {.fragment .gravity-exit .random-order}
+<!-- Random fall order instead of the left-to-right sweep. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
+## Gravity: trails
+
+Adding `.trails` leaves fading motion trails behind each falling mark.
+
+::: {.fragment .gravity-exit .random-order .trails}
+<!-- Adds fading motion trails behind each falling element. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::
+
+## Gravity: only some marks
+
+Setting `data-n="5"` makes only 5 randomly chosen marks fall; the rest stay put.
+
+::: {.fragment .gravity-exit .random-order data-n="5"}
+<!-- Only 5 randomly chosen elements fall; the rest stay put. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal()
+```
+:::

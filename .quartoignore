@@ -8,4 +8,12 @@ package-lock.json
 index.qmd
 index.html
 index_files/
+gravity.qmd
+gravity.html
+gravity_files/
+bats.qmd
+bats.html
+bats_files/
+site/
+_site/
 .github/

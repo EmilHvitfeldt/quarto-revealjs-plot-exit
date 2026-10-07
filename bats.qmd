@@ -1,0 +1,47 @@
+---
+title: "Bats Exit"
+subtitle: "Turn plots into bats"
+format: revealjs
+revealjs-plugins:
+  - plot-exit
+---
+
+## Bats: October is near
+
+`.bats-exit` morphs each mark into a bat that flutters off and fades out. Press the forward key to try it.
+
+::: {.fragment .bats-exit .random-order}
+<!-- Each mark morphs into a bat silhouette, then flutters off and fades out. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  scale_color_viridis_d(option = "C")
+```
+:::
+
+## Bats: only some marks
+
+`data-n="10"` works here too: only 10 randomly chosen marks turn into bats.
+
+::: {.fragment .bats-exit .random-order data-n="10"}
+<!-- Only 10 randomly chosen marks turn into bats; the rest stay put. -->
+
+```{r}
+#| dev: svg
+
+library(ggplot2)
+
+ggplot(mpg, aes(displ, hwy, color = class)) +
+  geom_point() +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  scale_color_viridis_d(option = "C")
+```
+:::

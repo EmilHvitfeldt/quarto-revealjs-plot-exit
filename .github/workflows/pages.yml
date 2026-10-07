@@ -31,13 +31,16 @@ jobs:
           packages: any::ggplot2 any::viridisLite any::knitr any::rmarkdown
 
       - name: Render example slides
-        run: quarto render index.qmd
+        run: |
+          quarto render gravity.qmd
+          quarto render bats.qmd
 
       - name: Assemble site
         run: |
           mkdir _site
-          cp index.html _site/index.html
-          cp -r index_files _site/index_files
+          cp site/index.html _site/index.html
+          cp gravity.html bats.html _site/
+          cp -r gravity_files bats_files _site/
 
       - uses: actions/upload-pages-artifact@v3
         with:
